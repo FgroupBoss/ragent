@@ -530,10 +530,6 @@ html.dark *::-webkit-scrollbar-thumb:hover {
     @apply text-sm text-slate-500;
   }
 
-  .admin-layout .ui-card-content {
-    @apply pt-0 pb-6;
-  }
-
   .admin-layout .ui-table-wrap {
     @apply rounded-xl border border-slate-200 bg-white overflow-x-auto;
   }
