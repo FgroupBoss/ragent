@@ -21,7 +21,6 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.mzt.logapi.starter.annotation.LogRecord;
 import com.nageoffer.ai.ragent.audit.constant.BizChangeBizType;
@@ -61,8 +60,9 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentNodeDO> implements IntentTreeService {
+public class IntentTreeServiceImpl implements IntentTreeService {
 
+    private final IntentNodeMapper intentNodeMapper;
     private final KnowledgeBaseMapper knowledgeBaseMapper;
     private final IntentTreeCacheManager intentTreeCacheManager;
     private final BizChangeLogContext bizChangeLogContext;
@@ -71,7 +71,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
 
     @Override
     public List<IntentNodeTreeVO> getFullTree() {
-        List<IntentNodeDO> list = this.list(new LambdaQueryWrapper<IntentNodeDO>()
+        List<IntentNodeDO> list = intentNodeMapper.selectList(new LambdaQueryWrapper<IntentNodeDO>()
                 .eq(IntentNodeDO::getDeleted, 0)
                 .orderByAsc(IntentNodeDO::getSortOrder, IntentNodeDO::getId));
 
@@ -122,7 +122,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
     )
     public String createNode(IntentNodeCreateRequest requestParam) {
         // 简单重复校验：intentCode 不允许重复
-        long count = this.count(new LambdaQueryWrapper<IntentNodeDO>()
+        long count = intentNodeMapper.selectCount(new LambdaQueryWrapper<IntentNodeDO>()
                 .eq(IntentNodeDO::getIntentCode, requestParam.getIntentCode())
                 .eq(IntentNodeDO::getDeleted, 0));
         if (count > 0) {
@@ -168,7 +168,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
                 .deleted(0)
                 .build();
 
-        this.save(node);
+        intentNodeMapper.insert(node);
 
         // 清除Redis缓存，下次读取时会重新从数据库加载
         intentTreeCacheManager.clearIntentTreeCache();
@@ -188,7 +188,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
             condition = BizChangeLogContext.RECORD_CONDITION
     )
     public void updateNode(String id, IntentNodeUpdateRequest req) {
-        IntentNodeDO node = this.getById(id);
+        IntentNodeDO node = intentNodeMapper.selectById(id);
         if (node == null || Objects.equals(node.getDeleted(), 1)) {
             throw new ServiceException("节点不存在或已删除: id=" + id);
         }
@@ -251,11 +251,11 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
             node.setParamPromptTemplate(req.getParamPromptTemplate());
         }
         node.setUpdateBy(UserContext.getUsername());
-        this.updateById(node);
+        intentNodeMapper.updateById(node);
 
         // 清除Redis缓存，下次读取时会重新从数据库加载
         intentTreeCacheManager.clearIntentTreeCache();
-        bizChangeLogContext.put(id, before, this.getById(id));
+        bizChangeLogContext.put(id, before, intentNodeMapper.selectById(id));
     }
 
     @Override
@@ -269,12 +269,12 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
             condition = BizChangeLogContext.RECORD_CONDITION
     )
     public void deleteNode(String id) {
-        IntentNodeDO node = this.getById(id);
+        IntentNodeDO node = intentNodeMapper.selectById(id);
         if (node == null || Objects.equals(node.getDeleted(), 1)) {
             throw new ServiceException("节点不存在或已删除: id=" + id);
         }
         IntentNodeDO before = BeanUtil.copyProperties(node, IntentNodeDO.class);
-        this.removeById(id);
+        intentNodeMapper.deleteById(id);
 
         // 清除Redis缓存，下次读取时会重新从数据库加载
         intentTreeCacheManager.clearIntentTreeCache();
@@ -300,7 +300,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
             node.setEnabled(1);
             node.setUpdateBy(operator);
         });
-        this.updateBatchById(targetNodes);
+        intentNodeMapper.updateById(targetNodes);
         intentTreeCacheManager.clearIntentTreeCache();
         bizChangeLogContext.put("BATCH", before, targetNodes);
     }
@@ -342,7 +342,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
             node.setEnabled(0);
             node.setUpdateBy(operator);
         });
-        this.updateBatchById(targetNodes);
+        intentNodeMapper.updateById(targetNodes);
         intentTreeCacheManager.clearIntentTreeCache();
         bizChangeLogContext.put("BATCH", before, targetNodes);
     }
@@ -391,7 +391,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
                 );
             }
         }
-        this.removeByIds(targetIdSet);
+        intentNodeMapper.deleteByIds(targetIdSet);
         intentTreeCacheManager.clearIntentTreeCache();
         bizChangeLogContext.put("BATCH", before, null);
     }
@@ -475,7 +475,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
      * 判断 intentCode 是否已存在，避免重复插入
      */
     private boolean existsByIntentCode(String intentCode) {
-        return baseMapper.selectCount(
+        return intentNodeMapper.selectCount(
                 new LambdaQueryWrapper<IntentNodeDO>()
                         .eq(IntentNodeDO::getIntentCode, intentCode)
                         .eq(IntentNodeDO::getDeleted, 0)
@@ -586,7 +586,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
         Assert.notEmpty(ids, () -> new ClientException("请至少选择一个节点"));
         List<String> normalizedIds = ids.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());
         Assert.notEmpty(normalizedIds, () -> new ClientException("节点ID不能为空"));
-        List<IntentNodeDO> targetNodes = this.list(new LambdaQueryWrapper<IntentNodeDO>()
+        List<IntentNodeDO> targetNodes = intentNodeMapper.selectList(new LambdaQueryWrapper<IntentNodeDO>()
                 .in(IntentNodeDO::getId, normalizedIds)
                 .eq(IntentNodeDO::getDeleted, 0));
         if (targetNodes.size() != normalizedIds.size()) {
@@ -601,7 +601,7 @@ public class IntentTreeServiceImpl extends ServiceImpl<IntentNodeMapper, IntentN
     }
 
     private List<IntentNodeDO> listActiveNodes() {
-        return this.list(new LambdaQueryWrapper<IntentNodeDO>()
+        return intentNodeMapper.selectList(new LambdaQueryWrapper<IntentNodeDO>()
                 .eq(IntentNodeDO::getDeleted, 0));
     }
 

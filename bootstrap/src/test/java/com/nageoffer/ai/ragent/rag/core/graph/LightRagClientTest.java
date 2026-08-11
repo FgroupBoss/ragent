@@ -23,9 +23,9 @@ import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.rag.config.GraphProperties;
 import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import okhttp3.OkHttpClient;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
+import mockwebserver3.MockResponse;
+import mockwebserver3.MockWebServer;
+import mockwebserver3.RecordedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,7 +58,7 @@ class LightRagClientTest {
 
     @AfterEach
     void tearDown() throws Exception {
-        server.shutdown();
+        server.close();
     }
 
     @Test
@@ -78,11 +78,11 @@ class LightRagClientTest {
 
         RecordedRequest listRequest = server.takeRequest(2, TimeUnit.SECONDS);
         assertNotNull(listRequest);
-        assertEquals("/documents", listRequest.getPath());
+        assertEquals("/documents", listRequest.getTarget());
 
         RecordedRequest deleteRequest = server.takeRequest(2, TimeUnit.SECONDS);
         assertNotNull(deleteRequest, "kb 名下有文档，应发起删除请求");
-        assertEquals("/documents/delete_document", deleteRequest.getPath());
+        assertEquals("/documents/delete_document", deleteRequest.getTarget());
         assertEquals(List.of("doc-kb"), docIdsOf(deleteRequest));
     }
 
@@ -125,7 +125,7 @@ class LightRagClientTest {
                 {"statuses":{"processed":[
                   {"id":"doc-kb","file_path":"kb_1954071234567890100"}
                 ]}}
-                """).setBodyDelay(1, TimeUnit.SECONDS));
+                """).newBuilder().bodyDelay(1, TimeUnit.SECONDS).build());
         server.enqueue(json("{}"));
 
         client.deleteByCollection("kb");
@@ -140,7 +140,7 @@ class LightRagClientTest {
     @DisplayName("客户端超时取通道级预算，超限调用降级为空证据")
     void clientTimeoutFollowsChannelBudget() {
         searchProperties.getChannels().setTimeoutMs(200);
-        server.enqueue(json("{\"response\":\"ctx\"}").setBodyDelay(1, TimeUnit.SECONDS));
+        server.enqueue(json("{\"response\":\"ctx\"}").newBuilder().bodyDelay(1, TimeUnit.SECONDS).build());
 
         GraphEvidence evidence = client.retrieveByScope("报销流程", "mix", 10, List.of());
 
@@ -148,13 +148,14 @@ class LightRagClientTest {
     }
 
     private MockResponse json(String body) {
-        return new MockResponse()
+        return new MockResponse.Builder()
                 .setHeader("Content-Type", "application/json")
-                .setBody(body);
+                .body(body)
+                .build();
     }
 
     private List<String> docIdsOf(RecordedRequest request) throws Exception {
-        JsonNode body = objectMapper.readTree(request.getBody().readUtf8());
+        JsonNode body = objectMapper.readTree(request.getBody().utf8());
         List<String> ids = new ArrayList<>();
         body.path("doc_ids").forEach(node -> ids.add(node.asText()));
         return ids;

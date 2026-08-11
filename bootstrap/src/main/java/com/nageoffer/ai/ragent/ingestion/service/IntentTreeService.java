@@ -17,15 +17,13 @@
 
 package com.nageoffer.ai.ragent.ingestion.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import com.nageoffer.ai.ragent.rag.dao.entity.IntentNodeDO;
 import com.nageoffer.ai.ragent.rag.controller.request.IntentNodeCreateRequest;
 import com.nageoffer.ai.ragent.rag.controller.vo.IntentNodeTreeVO;
 import com.nageoffer.ai.ragent.rag.controller.request.IntentNodeUpdateRequest;
 
 import java.util.List;
 
-public interface IntentTreeService extends IService<IntentNodeDO> {
+public interface IntentTreeService {
 
     /**
      * 查询整棵意图树（包含 RAG + SYSTEM）

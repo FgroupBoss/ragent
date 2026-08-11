@@ -103,9 +103,6 @@ class JdbcConversationMemorySummaryServiceTest {
         when(redissonClient.getLock(anyString())).thenReturn(lock);
         when(lock.tryLock()).thenReturn(true);
         when(lock.isHeldByCurrentThread()).thenReturn(true);
-        // promptTemplateLoader 仅 decorateIfNeeded 路径使用，当前用例不覆盖该路径；
-        // 安全桩防止将来加用例时静默取到 null
-        when(promptTemplateLoader.renderSection(anyString(), anyString(), anyMap())).thenReturn("wrapped summary");
     }
 
     @Test

@@ -18,13 +18,12 @@
 package com.nageoffer.ai.ragent.rag.config;
 
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverters;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 /**
  * Web MVC 配置
@@ -34,25 +33,25 @@ import java.util.List;
  * </p>
  *
  * <p>
- * 默认情况下，Spring Boot 会自动配置一组 {@link HttpMessageConverter}，
- * 其中 {@link StringHttpMessageConverter} 的编码可能不是 UTF-8，通过此配置可以显式设置为 UTF-8 并放到转换器链的最前面
+ * 默认情况下，Spring Boot 会自动配置一组 HTTP 消息转换器，
+ * 其中 {@link StringHttpMessageConverter} 的编码可能不是 UTF-8，通过此配置显式替换默认的字符串转换器
  * </p>
  */
 @Configuration
-public class WebConfig implements WebMvcConfigurer {
+public class RagentWebMvcConfiguration implements WebMvcConfigurer {
 
     /**
      * 自定义消息转换器配置
      *
      * <p>
-     * 这里通过往转换器列表的首位插入一个 UTF-8 的 {@link StringHttpMessageConverter}，
-     * 来覆盖默认的 String 类型消息转换行为
+     * 这里通过 Spring Framework 7 的构建器替换默认 {@link StringHttpMessageConverter}，
+     * 不影响 JSON 等其他默认转换器
      * </p>
      *
-     * @param converters Spring MVC 默认注册的消息转换器列表
+     * @param builder Spring MVC 消息转换器构建器
      */
     @Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+    public void configureMessageConverters(HttpMessageConverters.ServerBuilder builder) {
         // 使用 UTF-8 作为字符串响应的默认编码
         StringHttpMessageConverter stringConverter = new StringHttpMessageConverter(StandardCharsets.UTF_8);
 
@@ -60,8 +59,8 @@ public class WebConfig implements WebMvcConfigurer {
         // 防止某些客户端或中间件对该头部解析不兼容
         stringConverter.setWriteAcceptCharset(false);
 
-        // 将自定义的 String 消息转换器放在列表首位，提高其匹配优先级
-        converters.add(0, stringConverter);
+        // 替换默认 String 转换器，同时保留 JSON 等其余默认转换器
+        builder.withStringConverter(stringConverter);
     }
 
     @Override
