@@ -29,6 +29,7 @@
         <batik.version>1.18</batik.version>
         <okhttp.version>5.3.2</okhttp.version>
         <mcp-sdk.version>1.1.2</mcp-sdk.version>
+        <agentscope.version>2.0.2</agentscope.version>
         <bizlog-sdk.version>3.0.6</bizlog-sdk.version>
         <javax-validation-api.version>2.0.1.Final</javax-validation-api.version>
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
@@ -40,9 +41,12 @@
     </properties>
 
     <modules>
-        <module>bootstrap</module>
         <module>framework</module>
         <module>infra-ai</module>
+        <module>system</module>
+        <module>rag</module>
+        <module>agent</module>
+        <module>bootstrap</module>
         <module>mcp-server</module>
     </modules>
 
@@ -184,6 +188,20 @@
                 <groupId>io.modelcontextprotocol.sdk</groupId>
                 <artifactId>mcp-json-jackson2</artifactId>
                 <version>${mcp-sdk.version}</version>
+            </dependency>
+
+            <!-- AgentScope 自带 MCP SDK 0.17.0 传递依赖，被本文件的 1.1.2 统一压制；
+                 因此 agent 模块不得使用 io.agentscope.core.tool.mcp.* 客户端，MCP 走 rag 既有连接桥接 -->
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-core</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-openai</artifactId>
+                <version>${agentscope.version}</version>
             </dependency>
 
             <dependency>
