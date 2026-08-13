@@ -495,7 +495,7 @@ public class KnowledgeDocumentServiceImpl implements KnowledgeDocumentService {
 
             if (ProcessMode.CHUNK == processMode) {
                 String spec = ingestionSpecCodec.normalize(requestParam.getIngestionSpec());
-                updateWrapper.setSql("ingestion_spec = CAST({0} AS jsonb)", spec);
+            updateWrapper.setSql("ingestion_spec = CAST({0} AS JSON)", spec);
                 updateWrapper.set(KnowledgeDocumentDO::getPipelineId, null);
             } else {
                 if (!StringUtils.hasText(requestParam.getPipelineId())) {

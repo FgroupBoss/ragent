@@ -17,13 +17,14 @@
 
 package com.nageoffer.ai.ragent.rag.mq;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.mq.MessageWrapper;
 import com.nageoffer.ai.ragent.rag.mq.event.MessageFeedbackEvent;
 import com.nageoffer.ai.ragent.rag.service.MessageFeedbackService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
-import org.apache.rocketmq.spring.core.RocketMQListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,20 +33,29 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@RocketMQMessageListener(
-        topic = "message-feedback_topic${unique-name:}",
-        consumerGroup = "message-feedback_cg${unique-name:}"
-)
-public class MessageFeedbackConsumer implements RocketMQListener<MessageWrapper<MessageFeedbackEvent>> {
+public class MessageFeedbackConsumer {
 
     private final MessageFeedbackService feedbackService;
+    private final ObjectMapper objectMapper;
 
-    @Override
-    public void onMessage(MessageWrapper<MessageFeedbackEvent> message) {
+    @KafkaListener(topics = "message-feedback_topic${unique-name:}",
+            groupId = "message-feedback_cg${unique-name:}")
+    public void onMessage(String payload) {
+        MessageWrapper<MessageFeedbackEvent> message = parse(payload);
         MessageFeedbackEvent event = message.getBody();
 
         log.info("[消费者] 开始处理反馈事件，messageId: {}, userId: {}, vote: {}, cancelled: {}, keys: {}",
                 event.getMessageId(), event.getUserId(), event.getVote(), event.isCancelled(), message.getKeys());
         feedbackService.submitFeedbackByEvent(event);
+    }
+
+    private MessageWrapper<MessageFeedbackEvent> parse(String payload) {
+        try {
+            return objectMapper.readValue(payload,
+                    new TypeReference<MessageWrapper<MessageFeedbackEvent>>() {
+                    });
+        } catch (Exception e) {
+            throw new IllegalArgumentException("消息反馈事件解析失败", e);
+        }
     }
 }

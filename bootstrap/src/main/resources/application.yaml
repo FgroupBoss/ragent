@@ -13,11 +13,11 @@ spring:
       max-request-size: 100MB
 
   datasource:
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
     type: com.zaxxer.hikari.HikariDataSource
-    username: postgres
-    password: postgres
-    url: jdbc:postgresql://127.0.0.1:5432/ragent?client_encoding=UTF8
+    username: app
+    password: MysqlApp@2026
+    url: jdbc:mysql://127.0.0.1:3306/ragent?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     hikari:
       connection-timeout: 5000
       idle-timeout: 600000
@@ -30,13 +30,19 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      password: 123456
+      password: Redis@2026
 
-rocketmq:
-  name-server: 127.0.0.1:9876
-  producer:
-    group: ragent-producer${unique-name:}_pg
-    send-message-timeout: 2000
+  kafka:
+    bootstrap-servers: 127.0.0.1:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
 
 ragent:
   engine:
@@ -61,8 +67,8 @@ rag:
     asset-bucket: ragent-assets # 多模态资产桶（公共读），PDF 抽出的图片等供浏览器匿名直连预览
     s3:
       endpoint: http://localhost:9000
-      access-key: rustfsadmin
-      secret-key: rustfsadmin
+      access-key: minioadmin
+      secret-key: MinioAdmin@2026
       region: us-east-1
       path-style: true
       public-url:  # 内外网端点不同时配置，留空回退 endpoint
@@ -74,7 +80,7 @@ rag:
       public-url:  # 虚拟主机式基址（含 bucket 子域），如 https://ragent-assets.oss-cn-hangzhou.aliyuncs.com；留空由 endpoint 推导
 
   vector:
-    type: pg  # 可选 milvus / pg
+    type: milvus  # 可选 milvus / pg（MySQL 迁移后向量统一走 Milvus）
 
   keyword:
     type: none  # 可选 none / es

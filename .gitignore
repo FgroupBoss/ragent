@@ -43,6 +43,10 @@ dist/
 .vite/
 .env.local
 resources/docker/graphrag/.env
+frontend/*.log
+
+### Root npm artifacts ###
+/package-lock.json
 
 ### Tmp Out ###
 .output/

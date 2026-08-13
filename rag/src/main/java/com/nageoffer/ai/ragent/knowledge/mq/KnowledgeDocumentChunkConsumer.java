@@ -17,6 +17,8 @@
 
 package com.nageoffer.ai.ragent.knowledge.mq;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.context.LoginUser;
 import com.nageoffer.ai.ragent.framework.context.UserContext;
 import com.nageoffer.ai.ragent.framework.mq.MessageWrapper;
@@ -24,8 +26,7 @@ import com.nageoffer.ai.ragent.knowledge.mq.event.KnowledgeDocumentChunkEvent;
 import com.nageoffer.ai.ragent.knowledge.service.KnowledgeDocumentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
-import org.apache.rocketmq.spring.core.RocketMQListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -35,16 +36,15 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@RocketMQMessageListener(
-        topic = "knowledge-document-chunk_topic${unique-name:}",
-        consumerGroup = "knowledge-document-chunk_cg${unique-name:}"
-)
-public class KnowledgeDocumentChunkConsumer implements RocketMQListener<MessageWrapper<KnowledgeDocumentChunkEvent>> {
+public class KnowledgeDocumentChunkConsumer {
 
     private final KnowledgeDocumentService documentService;
+    private final ObjectMapper objectMapper;
 
-    @Override
-    public void onMessage(MessageWrapper<KnowledgeDocumentChunkEvent> message) {
+    @KafkaListener(topics = "knowledge-document-chunk_topic${unique-name:}",
+            groupId = "knowledge-document-chunk_cg${unique-name:}")
+    public void onMessage(String payload) {
+        MessageWrapper<KnowledgeDocumentChunkEvent> message = parse(payload);
         KnowledgeDocumentChunkEvent event = message.getBody();
 
         log.info("[消费者] 开始消费文档分块任务，docId={}, keys={}", event.getDocId(), message.getKeys());
@@ -54,6 +54,16 @@ public class KnowledgeDocumentChunkConsumer implements RocketMQListener<MessageW
             documentService.executeChunk(event.getDocId());
         } finally {
             UserContext.clear();
+        }
+    }
+
+    private MessageWrapper<KnowledgeDocumentChunkEvent> parse(String payload) {
+        try {
+            return objectMapper.readValue(payload,
+                    new TypeReference<MessageWrapper<KnowledgeDocumentChunkEvent>>() {
+                    });
+        } catch (Exception e) {
+            throw new IllegalArgumentException("文档分块消息解析失败", e);
         }
     }
 }

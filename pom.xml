@@ -13,9 +13,9 @@
     </description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
         <spring-boot.version>4.1.0</spring-boot.version>
-        <milvus-sdk.version>2.6.6</milvus-sdk.version>
+        <milvus-sdk.version>3.0.6</milvus-sdk.version>
         <tika.version>3.2.3</tika.version>
         <hutool-all.version>5.8.37</hutool-all.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
@@ -24,7 +24,6 @@
         <sa-token.version>1.45.0</sa-token.version>
         <transmittable-thread-local.version>2.14.5</transmittable-thread-local.version>
         <redisson.version>4.6.1</redisson.version>
-        <rocketmq-spring-boot-starter.version>2.3.6</rocketmq-spring-boot-starter.version>
         <commonmark.version>0.22.0</commonmark.version>
         <batik.version>1.18</batik.version>
         <okhttp.version>5.3.2</okhttp.version>
@@ -143,12 +142,6 @@
             </dependency>
 
             <dependency>
-                <groupId>org.apache.rocketmq</groupId>
-                <artifactId>rocketmq-spring-boot-starter</artifactId>
-                <version>${rocketmq-spring-boot-starter.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.commonmark</groupId>
                 <artifactId>commonmark</artifactId>
                 <version>${commonmark.version}</version>
@@ -176,6 +169,20 @@
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp-jvm</artifactId>
                 <version>${okhttp.version}</version>
+            </dependency>
+
+            <!-- okhttp-jvm 5.x / mockwebserver3 需要 okio >= 3.16（Okio.socket）；
+                 milvus-sdk 3.x 传递的 okhttp 会带入旧版 okio，这里统一压制 -->
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio</artifactId>
+                <version>3.16.4</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio-jvm</artifactId>
+                <version>3.16.4</version>
             </dependency>
 
             <dependency>

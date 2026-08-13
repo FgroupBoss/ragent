@@ -30,15 +30,14 @@ public interface MessageFeedbackMapper extends BaseMapper<MessageFeedbackDO> {
             VALUES
                 (#{feedback.id}, #{feedback.messageId}, #{feedback.conversationId}, #{feedback.userId},
                  #{feedback.vote}, #{feedback.reason}, #{feedback.comment},
-                 #{feedback.createTime}, #{feedback.updateTime}, 0)
-            ON CONFLICT (message_id, user_id) DO UPDATE SET
-                conversation_id = EXCLUDED.conversation_id,
-                vote = EXCLUDED.vote,
-                reason = EXCLUDED.reason,
-                comment = EXCLUDED.comment,
-                update_time = EXCLUDED.update_time,
-                deleted = 0
-            WHERE t_message_feedback.update_time < EXCLUDED.update_time
+                 #{feedback.createTime}, #{feedback.updateTime}, 0) AS src
+            ON DUPLICATE KEY UPDATE
+                conversation_id = IF(t_message_feedback.update_time < src.update_time, src.conversation_id, t_message_feedback.conversation_id),
+                vote = IF(t_message_feedback.update_time < src.update_time, src.vote, t_message_feedback.vote),
+                reason = IF(t_message_feedback.update_time < src.update_time, src.reason, t_message_feedback.reason),
+                comment = IF(t_message_feedback.update_time < src.update_time, src.comment, t_message_feedback.comment),
+                update_time = IF(t_message_feedback.update_time < src.update_time, src.update_time, t_message_feedback.update_time),
+                deleted = IF(t_message_feedback.update_time < src.update_time, src.deleted, t_message_feedback.deleted)
             """)
     int upsertActiveFeedback(@Param("feedback") MessageFeedbackDO feedback);
 
@@ -50,11 +49,10 @@ public interface MessageFeedbackMapper extends BaseMapper<MessageFeedbackDO> {
                 (id, message_id, conversation_id, user_id, vote, reason, comment, create_time, update_time, deleted)
             VALUES
                 (#{feedback.id}, #{feedback.messageId}, #{feedback.conversationId}, #{feedback.userId},
-                 0, NULL, NULL, #{feedback.createTime}, #{feedback.updateTime}, 1)
-            ON CONFLICT (message_id, user_id) DO UPDATE SET
-                update_time = EXCLUDED.update_time,
-                deleted = 1
-            WHERE t_message_feedback.update_time < EXCLUDED.update_time
+                 0, NULL, NULL, #{feedback.createTime}, #{feedback.updateTime}, 1) AS src
+            ON DUPLICATE KEY UPDATE
+                update_time = IF(t_message_feedback.update_time < src.update_time, src.update_time, t_message_feedback.update_time),
+                deleted = IF(t_message_feedback.update_time < src.update_time, src.deleted, t_message_feedback.deleted)
             """)
     int upsertCancelledFeedback(@Param("feedback") MessageFeedbackDO feedback);
 }

@@ -17,8 +17,6 @@
 
 package com.nageoffer.ai.ragent.framework.mq.producer;
 
-import org.apache.rocketmq.client.producer.SendResult;
-
 import java.util.function.Consumer;
 
 /**
@@ -33,17 +31,18 @@ public interface MessageQueueProducer {
      * @param keys    业务 key，可用于幂等判断
      * @param bizDesc 业务描述，用于日志标识
      * @param body    业务载荷
-     * @return RocketMQ 发送结果，包含 msgId、sendStatus 等信息
+     * 发送普通消息（Kafka 异步发送，发送失败抛出异常）
      */
-    SendResult send(String topic, String keys, String bizDesc, Object body);
+    void send(String topic, String keys, String bizDesc, Object body);
 
     /**
      * 发送事务消息
      * <p>
      * 流程：发送 half 消息 → 执行本地事务 → 根据结果 commit/rollback
      * <p>
-     * 事务回查由按 topic 注册的 {@link TransactionChecker} 处理，需提前通过
-     * {@link DelegatingTransactionListener#registerChecker(String, TransactionChecker)} 注册
+     * 事务消息（Kafka Outbox 模式）：
+     * 在本地事务内执行业务逻辑并写入 outbox 表，事务提交后投递到 Kafka；
+     * 投递失败由定时任务补偿重试，消费端需保证幂等
      *
      * @param topic            目标 topic
      * @param keys             业务 key

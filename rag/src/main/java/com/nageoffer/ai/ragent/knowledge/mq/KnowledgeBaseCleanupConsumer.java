@@ -17,6 +17,8 @@
 
 package com.nageoffer.ai.ragent.knowledge.mq;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nageoffer.ai.ragent.framework.exception.ServiceException;
 import com.nageoffer.ai.ragent.framework.mq.MessageWrapper;
 import com.nageoffer.ai.ragent.knowledge.mq.event.KnowledgeBaseCleanupEvent;
@@ -26,9 +28,8 @@ import com.nageoffer.ai.ragent.rag.core.vector.VectorStoreAdmin;
 import com.nageoffer.ai.ragent.rag.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
-import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -40,14 +41,11 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@RocketMQMessageListener(
-        topic = "knowledge-base-cleanup_topic${unique-name:}",
-        consumerGroup = "knowledge-base-cleanup_cg${unique-name:}"
-)
-public class KnowledgeBaseCleanupConsumer implements RocketMQListener<MessageWrapper<KnowledgeBaseCleanupEvent>> {
+public class KnowledgeBaseCleanupConsumer {
 
     private final VectorStoreAdmin vectorStoreAdmin;
     private final FileStorageService fileStorageService;
+    private final ObjectMapper objectMapper;
     /**
      * 关键词索引实现惰性解析：rag.keyword.type=none 时无该 bean，getIfAvailable() 返回 null 即跳过 ES 清理
      */
@@ -57,8 +55,10 @@ public class KnowledgeBaseCleanupConsumer implements RocketMQListener<MessageWra
      */
     private final ObjectProvider<LightRagClient> lightRagClientProvider;
 
-    @Override
-    public void onMessage(MessageWrapper<KnowledgeBaseCleanupEvent> message) {
+    @KafkaListener(topics = "knowledge-base-cleanup_topic${unique-name:}",
+            groupId = "knowledge-base-cleanup_cg${unique-name:}")
+    public void onMessage(String payload) {
+        MessageWrapper<KnowledgeBaseCleanupEvent> message = parse(payload);
         KnowledgeBaseCleanupEvent event = message.getBody();
         String collectionName = event.getCollectionName();
 
@@ -102,6 +102,16 @@ public class KnowledgeBaseCleanupConsumer implements RocketMQListener<MessageWra
 
         if (!allSucceeded) {
             throw new ServiceException("知识库物理资源清理存在失败项，触发重试");
+        }
+    }
+
+    private MessageWrapper<KnowledgeBaseCleanupEvent> parse(String payload) {
+        try {
+            return objectMapper.readValue(payload,
+                    new TypeReference<MessageWrapper<KnowledgeBaseCleanupEvent>>() {
+                    });
+        } catch (Exception e) {
+            throw new IllegalArgumentException("知识库清理消息解析失败", e);
         }
     }
 }

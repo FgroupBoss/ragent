@@ -19,7 +19,6 @@ package com.nageoffer.ai.ragent.framework.database;
 
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
-import org.postgresql.util.PGobject;
 
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
@@ -30,10 +29,7 @@ public class JsonbTypeHandler extends BaseTypeHandler<String> {
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType) throws SQLException {
-        PGobject jsonObject = new PGobject();
-        jsonObject.setType("jsonb");
-        jsonObject.setValue(parameter);
-        ps.setObject(i, jsonObject);
+        ps.setString(i, parameter);
     }
 
     @Override
